@@ -1,0 +1,23 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub/
+build/
+ios/Pods/
+android/.gradle/
+android/app/build/
+*.iml
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Generated files
+*.lock
+*.log
+
+# Hive local database
+*.hive
+*.hive.lock
