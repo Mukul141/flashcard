@@ -7,33 +7,31 @@ import '../model/flashcard.dart';
 class FlashcardWidget extends StatelessWidget {
   final Flashcard flashcard;
   final bool showAnswer;
+  final double elevation;
 
   const FlashcardWidget({
     super.key,
     required this.flashcard,
     required this.showAnswer,
+    this.elevation = 2,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 6,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        alignment: Alignment.center,
-        child: Text(
-          showAnswer ? flashcard.answer : flashcard.question,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface,
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
+      elevation: elevation,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            showAnswer ? flashcard.answer : flashcard.question,
+            style: Theme.of(context).textTheme.titleLarge,
+            textAlign: TextAlign.center,
           ),
         ),
       ),
     );
   }
 }
+
