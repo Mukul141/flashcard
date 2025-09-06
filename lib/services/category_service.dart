@@ -24,11 +24,12 @@ class CategoryService {
   /// - Groups flashcards into categories
   /// - Creates virtual "General" and "Favorites"
   /// - Loads saved progress from SharedPreferences
+
   Future<CategoryResult> loadCategories() async {
     final allCards = await _repo.getAllFlashcards();
     final grouped = <String, List<Flashcard>>{};
 
-    // Group by category (excluding "General" and "Favorites")
+    // Group by category, skipping General and Favorites for now
     for (final card in allCards) {
       final cat = card.safeCategory;
       if (cat != "General" && cat != "Favorites") {
@@ -40,26 +41,16 @@ class CategoryService {
     // General = all non-placeholder cards
     grouped["General"] = allCards.where((c) => !c.safeIsPlaceholder).toList();
 
-    // Favorites = all cards marked as favorite
-    grouped["Favorites"] = allCards
-        .where((c) => c.safeFavorite && !c.safeIsPlaceholder)
-        .toList();
-
     // Load saved progress
     final prefs = await SharedPreferences.getInstance();
     final progress = <String, int>{
       for (final cat in grouped.keys) cat: prefs.getInt("progress_$cat") ?? 0
     };
 
-    // Ensure display order: General → Favorites → user categories
+    // Ensure General comes first
     final ordered = <String, List<Flashcard>>{};
-    if (grouped.containsKey("General")) {
-      ordered["General"] = grouped["General"]!;
-    }
-    if (grouped.containsKey("Favorites")) {
-      ordered["Favorites"] = grouped["Favorites"]!;
-    }
-    grouped.keys.where((k) => k != "General" && k != "Favorites").forEach((k) {
+    if (grouped.containsKey("General")) ordered["General"] = grouped["General"]!;
+    grouped.keys.where((k) => k != "General").forEach((k) {
       ordered[k] = grouped[k]!;
     });
 
