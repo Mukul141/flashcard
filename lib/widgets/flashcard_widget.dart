@@ -27,7 +27,8 @@ class FlashcardWidget extends StatelessWidget {
         child: Text(
           showAnswer ? flashcard.answer : flashcard.question,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),

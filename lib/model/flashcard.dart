@@ -3,9 +3,8 @@ import 'package:hive/hive.dart';
 
 part 'flashcard.g.dart';
 
-/// Flashcard model stored in Hive.
-/// Each card has a question, answer, and belongs to a category.
-/// Optional flags handle favorites, learning progress, and placeholders.
+/// Hive model for a flashcard.
+/// Stores question, answer, category, and optional state flags.
 @HiveType(typeId: 0)
 class Flashcard extends HiveObject {
   @HiveField(0)
@@ -35,7 +34,10 @@ class Flashcard extends HiveObject {
     this.isPlaceholder = false,
   });
 
-  /// Helpers that safely unwrap nullable fields
+  // ---------------------------------------------------------------------------
+  // Safe Accessors (handle nullables gracefully)
+  // ---------------------------------------------------------------------------
+
   String get safeCategory => category.isNotEmpty ? category : "General";
   bool get safeFavorite => isFavorite ?? false;
   bool get safeIsLearned => isLearned ?? false;

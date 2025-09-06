@@ -5,7 +5,9 @@ import '../model/flashcard.dart';
 import 'flashcard_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final void Function(bool)? onThemeToggle;
+
+  const HomeScreen({super.key, this.onThemeToggle});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -15,10 +17,9 @@ class _HomeScreenState extends State<HomeScreen> {
   static const String boxName = "flashcardsBox";
   late Box<Flashcard> _box;
 
-  // Category -> cards mapping
-  Map<String, List<Flashcard>> _byCategory = {};
+  bool _isDark = false;
 
-  // Category -> number of completed cards
+  Map<String, List<Flashcard>> _byCategory = {};
   Map<String, int> _progressByCategory = {};
 
   @override
@@ -27,36 +28,33 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
-  /// Loads flashcards, groups them by category,
-  /// and restores progress from shared preferences.
+  // ---------------------------------------------------------------------------
+  // Data Loading
+  // ---------------------------------------------------------------------------
+
   Future<void> _loadData() async {
     _box = Hive.box<Flashcard>(boxName);
-
     final grouped = <String, List<Flashcard>>{};
 
-    // Build category lists, skipping "General" for now
+    // Build per-category lists
     for (final card in _box.values) {
       final cat = card.safeCategory;
       if (cat != "General") {
         grouped.putIfAbsent(cat, () => []);
-        if (!card.safeIsPlaceholder) {
-          grouped[cat]!.add(card);
-        }
+        if (!card.safeIsPlaceholder) grouped[cat]!.add(card);
       }
     }
 
-    // "General" always contains all non-placeholder cards
-    final allCards = _box.values.where((c) => !c.safeIsPlaceholder).toList();
-    grouped["General"] = allCards;
+    // "General" contains all non-placeholder cards
+    grouped["General"] = _box.values.where((c) => !c.safeIsPlaceholder).toList();
 
     // Restore progress
     final prefs = await SharedPreferences.getInstance();
-    final progressMap = <String, int>{};
-    for (final cat in grouped.keys) {
-      progressMap[cat] = prefs.getInt("progress_$cat") ?? 0;
-    }
+    final progressMap = <String, int>{
+      for (final cat in grouped.keys) cat: prefs.getInt("progress_$cat") ?? 0
+    };
 
-    // Ensure "General" comes first, rest follow in insertion order
+    // Ensure "General" comes first
     setState(() {
       final ordered = <String, List<Flashcard>>{};
       if (grouped.containsKey("General")) {
@@ -71,7 +69,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Opens a dialog to create a new category (set).
+  // ---------------------------------------------------------------------------
+  // Category Management
+  // ---------------------------------------------------------------------------
+
   Future<void> _createNewSet() async {
     final controller = TextEditingController();
 
@@ -100,8 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
               }
 
               // Prevent reserved or duplicate names
-              if (newName.toLowerCase() == "general" ||
-                  newName.toLowerCase() == "favorites") {
+              if (["general", "favorites"].contains(newName.toLowerCase())) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text("That name is reserved.")),
                 );
@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
 
-              // Create placeholder entry so the category appears
+              // Create placeholder so category is visible immediately
               final placeholder = Flashcard(
                 question: "placeholder",
                 answer: "placeholder",
@@ -133,7 +133,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Builds a single category tile with progress bar and optional delete menu.
+  // ---------------------------------------------------------------------------
+  // UI Helpers
+  // ---------------------------------------------------------------------------
+
   Widget _buildCategoryTile(String title, List<Flashcard> cards) {
     final total = cards.where((c) => !c.safeIsPlaceholder).length;
     final saved = (_progressByCategory[title] ?? 0).clamp(0, total);
@@ -157,16 +160,13 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header row: category name + options
+              // Header row: title + menu
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   if (title != "General")
                     PopupMenuButton<String>(
@@ -217,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Progress indicator
+              // Progress bar
               Row(
                 children: [
                   Expanded(
@@ -244,139 +244,147 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final favCount = _box.values.where((c) => c.safeFavorite).length;
-    final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Colors.deepPurple,
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        elevation: 0,
+        title: Text(
+          "Categories",
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 30,
+          ),
+        ),
+        actions: [
+          Row(
+            children: [
+              Icon(Icons.light_mode, color: Theme.of(context).colorScheme.onPrimary),
+              Switch(
+                value: _isDark,
+                onChanged: (value) {
+                  setState(() => _isDark = value);
+                  widget.onThemeToggle?.call(value);
+                },
+                activeColor: Theme.of(context).colorScheme.onPrimary,
+                activeTrackColor: Theme.of(context).colorScheme.onPrimary.withOpacity(0.5),
+                inactiveThumbColor: Theme.of(context).colorScheme.onPrimary,
+                inactiveTrackColor: Theme.of(context).colorScheme.onPrimary.withOpacity(0.3),
+              ),
+              Icon(Icons.dark_mode, color: Theme.of(context).colorScheme.onPrimary),
+              const SizedBox(width: 12),
+            ],
+          ),
+        ],
+      ),
       body: Column(
         children: [
-          // Top section: favorites and "new set"
+          // Favorites + new set
           Container(
-            height: screenHeight * 0.4,
-            decoration: const BoxDecoration(
-              color: Colors.deepPurple,
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
             ),
             padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                const SizedBox(height: 40),
-                const Text("Categories",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 30),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Card(
-                        elevation: 6,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                  const FlashcardScreen(category: "favorites")),
-                            );
-                            await _loadData();
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(Icons.star,
-                                    color: Colors.orange, size: 40),
-                                const SizedBox(height: 12),
-                                const Text("My favorites",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 16)),
-                                const SizedBox(height: 6),
-                                Text("$favCount cards",
-                                    style: const TextStyle(color: Colors.grey)),
-                              ],
-                            ),
+                Expanded(
+                  child: Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const FlashcardScreen(category: "Favorites"),
                           ),
+                        );
+                        await _loadData();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.star, color: Colors.orange, size: 40),
+                            const SizedBox(height: 12),
+                            const Text("My Favorites",
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            const SizedBox(height: 6),
+                            Text("$favCount cards", style: const TextStyle(color: Colors.grey)),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Card(
-                        elevation: 6,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: _createNewSet,
-                          child: const Padding(
-                            padding: EdgeInsets.all(20),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(Icons.add, color: Colors.blue, size: 40),
-                                SizedBox(height: 12),
-                                Text("New set",
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.bold, fontSize: 16)),
-                                SizedBox(height: 6),
-                                Text("Create category",
-                                    style: TextStyle(color: Colors.grey)),
-                              ],
-                            ),
-                          ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Card(
+                    elevation: 6,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: _createNewSet,
+                      child: const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.add, color: Colors.blue, size: 40),
+                            SizedBox(height: 12),
+                            Text("New set",
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            SizedBox(height: 6),
+                            Text("Create category", style: TextStyle(color: Colors.grey)),
+                          ],
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Category list
+          // Categories list
           Expanded(
             child: Container(
-              color: Colors.grey[100],
+              color: Theme.of(context).scaffoldBackgroundColor,
               child: ListView(
                 padding: const EdgeInsets.only(top: 20),
-                children: [
-                  ..._byCategory.entries.map((e) =>
-                      _buildCategoryTile(e.key, e.value)),
-                ],
+                children: _byCategory.entries
+                    .map((e) => _buildCategoryTile(e.key, e.value))
+                    .toList(),
               ),
             ),
           ),
         ],
       ),
 
-      // Bottom navigation: category view vs. last opened card view
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 0,
         onTap: (i) async {
           if (i == 1) {
             final prefs = await SharedPreferences.getInstance();
             final lastCategory = prefs.getString("lastCategory");
-            final categoryToOpen = (lastCategory != null &&
-                _byCategory.containsKey(lastCategory))
+            final categoryToOpen = (lastCategory != null && _byCategory.containsKey(lastCategory))
                 ? lastCategory
-                : (_byCategory.keys.isNotEmpty
-                ? _byCategory.keys.first
-                : "General");
+                : (_byCategory.keys.isNotEmpty ? _byCategory.keys.first : "General");
 
             await Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (_) => FlashcardScreen(category: categoryToOpen)),
+              MaterialPageRoute(builder: (_) => FlashcardScreen(category: categoryToOpen)),
             );
             await _loadData();
           }
