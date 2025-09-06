@@ -44,14 +44,15 @@ Supports both **Light and Dark mode**. 🌙☀️
 ## Screenshots
 
 ### Light Mode  
-| Home | Flashcards | Progress |
-|------|------------|----------|
-| ![Light Home](assets/screenshots/light_home.png) | ![Light Deck](assets/screenshots/light_deck.png) | ![Light Progress](assets/screenshots/light_progress.png) |
+| Home | Flashcards | Deck Complete |
+|------|------------|---------------|
+| <img src="screenshots/home_light.png" width="250"/> | <img src="screenshots/flashcard_light.png" width="250"/> | <img src="screenshots/deckComplete_light.png" width="250"/> |
 
 ### Dark Mode  
-| Home | Flashcards | Progress |
-|------|------------|----------|
-| ![Dark Home](assets/screenshots/dark_home.png) | ![Dark Deck](assets/screenshots/dark_deck.png) | ![Dark Progress](assets/screenshots/dark_progress.png) |
+| Home | Flashcards | Deck Complete |
+|------|------------|---------------|
+| <img src="screenshots/home_dark.png" width="250"/> | <img src="screenshots/flashcard_dark.png" width="250"/> | <img src="screenshots/deckComplete_dark.png" width="250"/> |
+
 
 ---
 
@@ -97,4 +98,5 @@ lib/
 └── repository/
     └── flashcard_repository.dart # Hive data access layer
 ```
+
 
