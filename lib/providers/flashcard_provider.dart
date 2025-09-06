@@ -4,6 +4,8 @@ import '../model/flashcard.dart';
 import '../services/flashcard_service.dart';
 import '../data/flashcard_repository.dart';
 
+/// Provider for managing a deck of flashcards.
+/// Handles navigation, shuffling, CRUD, and sync with [FlashcardService].
 class FlashcardProvider extends ChangeNotifier {
   final FlashcardService _service = FlashcardService();
   final FlashcardRepository _repo = FlashcardRepository();
@@ -11,9 +13,15 @@ class FlashcardProvider extends ChangeNotifier {
   List<Flashcard> _flashcards = [];
   int _currentIndex = 0;
 
+  /// Exposed state for UI.
   List<Flashcard> get flashcards => _flashcards;
   int get currentIndex => _currentIndex;
 
+  // ---------------------------------------------------------------------------
+  // Deck Lifecycle
+  // ---------------------------------------------------------------------------
+
+  /// Loads a deck for a given [category].
   Future<void> loadDeck(String category) async {
     final result = await _service.loadDeck(category);
     _flashcards = result.cards;
@@ -21,6 +29,19 @@ class FlashcardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Restarts a deck by resetting progress and reloading.
+  Future<void> restartDeck(String category) async {
+    await _service.saveProgress(category, 0); // reset persisted progress
+    _currentIndex = 0;                        // reset local index
+    await loadDeck(category);                 // reload fresh
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Navigation
+  // ---------------------------------------------------------------------------
+
+  /// Moves to the next card and saves progress.
   Future<void> nextCard(String category) async {
     if (_currentIndex < _flashcards.length) {
       _currentIndex++;
@@ -29,21 +50,7 @@ class FlashcardProvider extends ChangeNotifier {
     }
   }
 
-  /// Restarts a deck by resetting progress and reloading.
-  Future<void> restartDeck(String category) async {
-    // reset stored progress in SharedPreferences (via service)
-    await _service.saveProgress(category, 0);
-
-    // reset provider internal index
-    _currentIndex = 0;
-
-    // reload deck (loadDeck reads the saved progress — now 0)
-    await loadDeck(category);
-
-    // notify UI
-    notifyListeners();
-  }
-
+  /// Moves back to the previous card.
   void prevCard() {
     if (_currentIndex > 0) {
       _currentIndex--;
@@ -51,6 +58,11 @@ class FlashcardProvider extends ChangeNotifier {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Deck Management
+  // ---------------------------------------------------------------------------
+
+  /// Shuffles the remaining cards while keeping seen cards in place.
   Future<void> shuffleDeck(String category) async {
     final seen = _flashcards.sublist(0, _currentIndex);
     final remaining = _flashcards.sublist(_currentIndex);
@@ -60,12 +72,18 @@ class FlashcardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ---------------------------------------------------------------------------
+  // CRUD Operations
+  // ---------------------------------------------------------------------------
+
+  /// Adds a new flashcard to a [category].
   Future<void> addFlashcard(String category, String q, String a) async {
     final card = Flashcard(question: q, answer: a, category: category);
     await _repo.addFlashcard(card);
     await loadDeck(category);
   }
 
+  /// Updates an existing flashcard.
   Future<void> editFlashcard(Flashcard card, String q, String a) async {
     card.question = q;
     card.answer = a;
@@ -73,11 +91,17 @@ class FlashcardProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes a flashcard and refreshes the deck.
   Future<void> deleteFlashcard(Flashcard card, String category) async {
     await _repo.deleteFlashcard(card.key as int);
     await loadDeck(category);
   }
 
+  // ---------------------------------------------------------------------------
+  // Favorites
+  // ---------------------------------------------------------------------------
+
+  /// Toggles favorite state for a flashcard and reloads deck.
   Future<void> toggleFavorite(Flashcard card, String category) async {
     card.isFavorite = !card.safeFavorite;
     await _repo.updateFlashcard(card);

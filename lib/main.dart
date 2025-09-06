@@ -1,7 +1,8 @@
-// main.dart
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+
 import 'model/flashcard.dart';
 import 'screens/home_screen.dart';
 import 'providers/theme_provider.dart';
@@ -12,14 +13,21 @@ import 'theme/app_theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hive init
+  // ---------------------------------------------------------------------------
+  // Hive Initialization
+  // ---------------------------------------------------------------------------
   await Hive.initFlutter();
   Hive.registerAdapter(FlashcardAdapter());
   await Hive.openBox<Flashcard>("flashcardsBox");
 
+  // ---------------------------------------------------------------------------
+  // Run App
+  // ---------------------------------------------------------------------------
   runApp(const MyApp());
 }
 
+/// Root widget of the application.
+/// Provides [ThemeProvider], [CategoryProvider], and [FlashcardProvider].
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -29,7 +37,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
-        ChangeNotifierProvider(create: (_) => FlashcardProvider()), // ✅ Add here
+        ChangeNotifierProvider(create: (_) => FlashcardProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {

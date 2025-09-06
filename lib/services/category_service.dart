@@ -4,6 +4,7 @@ import '../model/flashcard.dart';
 import '../data/flashcard_repository.dart';
 
 /// Holds both categories and their progress counts.
+/// Returned by [CategoryService.loadCategories].
 class CategoryResult {
   final Map<String, List<Flashcard>> categories;
   final Map<String, int> progress;
@@ -12,36 +13,46 @@ class CategoryResult {
 }
 
 /// Service layer for managing categories and progress.
-/// Uses the repository for persistence, keeps business logic here.
+/// Uses the repository for persistence and keeps all business logic here.
 class CategoryService {
   final FlashcardRepository _repo = FlashcardRepository();
 
-  /// Load categories and their progress values.
+  // ---------------------------------------------------------------------------
+  // Load
+  // ---------------------------------------------------------------------------
+
+  /// Loads categories (including "General") and progress for each.
   Future<CategoryResult> loadCategories() async {
     final allCards = await _repo.getAllFlashcards();
     final grouped = <String, List<Flashcard>>{};
 
-    // Group by category, skipping General for now
+    // Group cards by category (skip General for now, handle later)
     for (final card in allCards) {
       final cat = card.safeCategory;
       if (cat != "General") {
         grouped.putIfAbsent(cat, () => []);
-        if (!card.safeIsPlaceholder) grouped[cat]!.add(card);
+        if (!card.safeIsPlaceholder) {
+          grouped[cat]!.add(card);
+        }
       }
     }
 
-    // General = all non-placeholder cards
-    grouped["General"] = allCards.where((c) => !c.safeIsPlaceholder).toList();
+    // "General" = all non-placeholder cards
+    grouped["General"] =
+        allCards.where((c) => !c.safeIsPlaceholder).toList();
 
-    // Load saved progress
+    // Load saved progress values from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     final progress = <String, int>{
-      for (final cat in grouped.keys) cat: prefs.getInt("progress_$cat") ?? 0
+      for (final cat in grouped.keys)
+        cat: prefs.getInt("progress_$cat") ?? 0
     };
 
-    // Ensure General comes first
+    // Reorder so "General" always comes first
     final ordered = <String, List<Flashcard>>{};
-    if (grouped.containsKey("General")) ordered["General"] = grouped["General"]!;
+    if (grouped.containsKey("General")) {
+      ordered["General"] = grouped["General"]!;
+    }
     grouped.keys.where((k) => k != "General").forEach((k) {
       ordered[k] = grouped[k]!;
     });
@@ -49,23 +60,31 @@ class CategoryService {
     return CategoryResult(ordered, progress);
   }
 
-  /// Create a new category with a placeholder card.
+  // ---------------------------------------------------------------------------
+  // Create / Delete
+  // ---------------------------------------------------------------------------
+
+  /// Creates a new category with a placeholder card.
   Future<void> createCategory(String name) async {
     await _repo.addCategoryPlaceholder(name);
   }
 
-  /// Delete an entire category and its cards.
+  /// Deletes an entire category and its cards.
   Future<void> deleteCategory(String name) async {
     await _repo.deleteByCategory(name);
   }
 
-  /// Save the progress (current index) for a category.
+  // ---------------------------------------------------------------------------
+  // Progress
+  // ---------------------------------------------------------------------------
+
+  /// Saves the current progress index for a category.
   Future<void> saveProgress(String category, int index) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt("progress_$category", index);
   }
 
-  /// Load saved progress for a category.
+  /// Loads saved progress for a category (defaults to 0).
   Future<int> loadProgress(String category) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getInt("progress_$category") ?? 0;

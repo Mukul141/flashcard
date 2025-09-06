@@ -1,9 +1,12 @@
-// widgets/flashcard_widget.dart
+// lib/widgets/flashcard_widget.dart
 import 'package:flutter/material.dart';
 import '../model/flashcard.dart';
 
-/// A single flashcard UI widget.
-/// Displays either the question or the answer depending on [showAnswer].
+/// UI widget for displaying a single flashcard.
+///
+/// - Shows either the question or the answer depending on [showAnswer].
+/// - Provides consistent rounded styling and padding.
+/// - Can be reused in different deck layouts.
 class FlashcardWidget extends StatelessWidget {
   final Flashcard flashcard;
   final bool showAnswer;
@@ -13,14 +16,19 @@ class FlashcardWidget extends StatelessWidget {
     super.key,
     required this.flashcard,
     required this.showAnswer,
-    this.elevation = 2,
+    this.elevation = 2, // default small shadow
   });
 
   @override
   Widget build(BuildContext context) {
+    // -------------------------------------------------------------------------
+    // UI
+    // -------------------------------------------------------------------------
     return Card(
       elevation: elevation,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -34,4 +42,3 @@ class FlashcardWidget extends StatelessWidget {
     );
   }
 }
-
